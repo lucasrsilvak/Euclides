@@ -111,4 +111,3 @@ class IV(Scene):
         self.play(FadeOut(Solution), FadeOut(Quest), FadeOut(Triangle))
 
         self.wait(1)
-        print("tete")
