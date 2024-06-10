@@ -87,4 +87,3 @@ class V(Scene):
         self.play(FadeOut(Solution), FadeOut(Quest))
 
         self.wait(1)
-        print("tete")
