@@ -27,6 +27,13 @@ def SetOpacity(obj, opacity):
         if isinstance(obj, Polygon):  # Additional check for Polygon types
             obj.set_stroke(opacity=opacity)
             obj.set_fill(opacity=0)
+        elif isinstance(obj, Dot):
+            obj.set_fill(opacity=1)
+        elif isinstance(obj, Sector):
+            obj.set_fill(opacity=0.5)
+        elif isinstance(obj, Arc):
+            obj.set_stroke(opacity=1)
+            obj.set_fill(opacity=0)
         elif hasattr(obj, 'set_opacity'):
             obj.set_opacity(opacity)
 
@@ -41,6 +48,8 @@ def GetPhase(DotA, DotB):
 
 def Introduction(self, subtitle_text, description_text, Condition, Success):
     self.wait(1)
+    
+    # Title texts
     title_greek = Text(GREEK_TEXT, font_size=40, color=WHITE)
     title_greek.to_edge(UP, buff=1)
 
@@ -50,19 +59,26 @@ def Introduction(self, subtitle_text, description_text, Condition, Success):
     subtitle = Text(subtitle_text, font_size=30, color=WHITE)
     subtitle.next_to(title_portuguese, DOWN, buff=0.5)
 
-    description = Text(description_text, font_size=24, color=WHITE)
-    description.next_to(subtitle, DOWN, buff=0.5)
+    # Break the description text into lines and center each line
+    description_lines = description_text.split('\n')
+    description_vgroup = VGroup(*[
+        Text(line.strip(), font_size=24, color=WHITE) for line in description_lines if line.strip()
+    ])
+    description_vgroup.arrange(DOWN, center=True, buff=0)
+    description_vgroup.next_to(subtitle, DOWN, buff=0.5)
 
+    # Animations
     self.play(Write(title_greek))
     self.wait(2)
     self.play(ReplacementTransform(title_greek, title_portuguese))
     
     self.play(
         FadeIn(subtitle, shift=UP),
-        FadeIn(description, shift=UP),
+        FadeIn(description_vgroup, shift=UP),
         run_time=3
     )
 
+    self.wait(2)
     SetOpacity(Condition, 1)
     self.play(FadeIn(Condition), run_time=2)
     self.wait(2)
@@ -73,7 +89,7 @@ def Introduction(self, subtitle_text, description_text, Condition, Success):
     self.play(FadeIn(Success), run_time=2)
     self.wait(2)
 
-    text_group = VGroup(title_portuguese, subtitle, description, Success)
+    text_group = VGroup(title_portuguese, subtitle, description_vgroup, Success)
     self.play(FadeOut(text_group), run_time=1)
 
 def AddQuest(self, quest_text):
@@ -131,6 +147,7 @@ def CreateDot(self, x, y, letter, side=DOWN, animate=True):
     label.set_stroke(width=0.4, color=BLACK)
     label.set_opacity(0)
 
+    dot.z_index = 5
 
     if animate:
         dot_movement = dot.animate.shift(DOWN * 2).set_fill(opacity=1)
@@ -149,6 +166,7 @@ def CreateDot(self, x, y, letter, side=DOWN, animate=True):
 def CreateLine(self, DotA, DotB, animate=True):
     # Create a line between two dots
     line = Line(DotA.get_center(), DotB.get_center(), color=COLOR, stroke_width=LINE_STROKE)
+    line.z_index = 1
     if animate:
         self.play(Create(line), run_time = LINE_TIME)
     else:
@@ -270,42 +288,38 @@ def AddTicksToTriangle(self, triangle, animate=True, tick_length=0.1, num_ticks=
     tick_group.add(triangle)
     return tick_group
 
-def CreateAngle(self, DotA, LineA, LineB, animate=True):
+def CreateAngle(self, DotA, LineA, LineB, animate=True, color=WHITE, size=0.3, Inverse=False):
+    if Inverse:
+        LineA, LineB = LineB, LineA
+
     direction_A = LineA.get_end() - LineA.get_start()
     direction_B = LineB.get_start() - LineB.get_end()
+
     angle_A = np.arctan2(direction_A[1], direction_A[0])
     angle_B = np.arctan2(direction_B[1], direction_B[0])
 
-    # Ensuring the angle goes from lineA to lineB counter-clockwise
-    if angle_A > angle_B:
+    if (angle_A > angle_B):
         angle_A, angle_B = angle_B, angle_A
-    
-    # Create the sector
-    sector = Sector(
-        outer_radius=0.3, 
-        angle=angle_B - angle_A,
-        start_angle=angle_A,
-        color=WHITE,
-        fill_opacity=0.5,
-        arc_center=DotA.get_center()
-    )
+
+    if Inverse:
+        angle_A += PI
+        angle_B += PI
 
     arc_border = Arc(
-        radius=0.3,
+        radius=size,
         start_angle=angle_A,
         angle=angle_B - angle_A,
-        color=WHITE,
-        stroke_width=1,
+        color=color,
+        stroke_width=2,
         arc_center=DotA.get_center()
     )
 
     if animate:
-        self.play(FadeIn(sector), Create(arc_border), run_time=2)
+        self.play(Create(arc_border), run_time=1)
     else:
-        self.add(sector, arc_border)
+        self.add(arc_border)
 
-    sector = VGroup(sector, arc_border)
-    return sector
+    return arc_border
 
 def CreateTick(self, mark_line, length=0.1, num_ticks=1, position_factor=0.5):
     ticks = VGroup()
@@ -336,7 +350,7 @@ def CreateLineTick(self, mark_line, num_ticks=1, animate=True, length=0.15, posi
         )
         ticks.add(tick)
     if animate:
-        self.play(FadeIn(ticks), run_time = LINE_TIME)
+        self.play(FadeIn(ticks), run_time = 0.5)
     else:
         self.add(ticks)
     return ticks
@@ -378,6 +392,25 @@ def MoveToOrigin(self, group):
     
     # Animate moving the group to the origin
     self.play(group.animate.shift(shift_vector))
+
+def ReduceArcSize(self, arc, reduced_radius):
+    original_angle = arc.angle
+    original_color = arc.get_color()
+    original_start_angle = arc.start_angle
+
+    # Create a smaller arc with the same angle and color
+    reduced_arc = Arc(
+        radius=reduced_radius, 
+        start_angle=original_start_angle, 
+        angle=original_angle, 
+        color=original_color,
+        stroke_width=arc.stroke_width,
+        arc_center=arc.arc_center
+    )
+
+    # Animate the transformation to the reduced arc
+    self.play(Transform(arc, reduced_arc))
+    self.wait(1)
 
 def ProblemaI(self, DotA, DotB, letter, side, Invert = False):
     Ax, Ay, _ = DotA.get_center()
