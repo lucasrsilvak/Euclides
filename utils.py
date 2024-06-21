@@ -412,6 +412,57 @@ def ReduceArcSize(self, arc, reduced_radius):
     self.play(Transform(arc, reduced_arc))
     self.wait(1)
 
+def Intersection(DotA, radius, LineA, LineB):
+    (Ax, Ay) = DotA
+    (Bx, By) = LineA
+    (Cx, Cy) = LineB
+
+    if Bx != Cx:
+        m = (Cy - By) / (Cx - Bx)
+        b = By - m * Bx
+
+        A = 1 + m**2
+        B = 2 * (m * b - m * Ay - Ax)
+        C = Ax**2 + (b - Ay)**2 - radius**2
+
+        discriminant = B**2 - 4 * A * C
+
+        if discriminant < 0:
+            raise ValueError("The line does not intersect the circle.")
+        
+        x1 = (-B + np.sqrt(discriminant)) / (2 * A)
+        x2 = (-B - np.sqrt(discriminant)) / (2 * A)
+        
+        y1 = m * x1 + b
+        y2 = m * x2 + b
+
+        DotE1 = (x1, y1)
+        DotE2 = (x2, y2)
+    else:
+        x1 = Bx
+        y1 = Ay + radius
+        y2 = Ay - radius
+        DotE1 = (x1, y1)
+        DotE2 = (x1, y2)
+
+    return DotE1, DotE2
+
+def Intercept(self, DotA, DotB, LineAB, LineAC, letter, position, Complete=False):
+    CircleABH = CreateCircleFromLine(self, DotA, DotB, LineAB, True)
+
+    CenterE1, CenterE2 = Intersection((DotA.get_center()[0], DotA.get_center()[1]), LineAB.get_length(), (LineAC.get_start()[0], LineAC.get_start()[1]), (LineAC.get_end()[0], LineAC.get_end()[1]))
+
+    DotD, LabelD = CreateDot(self, CenterE1[0], CenterE1[1], letter[0], position[0])
+    DotE, LabelE = None, None
+
+    if Complete:
+        DotE, LabelE = CreateDot(self, CenterE2[0], CenterE2[1], letter[1], position[1])
+
+    self.play(FadeOut(CircleABH))
+
+    return DotD, LabelD, DotE, LabelE
+
+
 def ProblemaI(self, DotA, DotB, letter, side, Invert = False):
     Ax, Ay, _ = DotA.get_center()
     Bx, By, _ = DotB.get_center()
@@ -433,7 +484,7 @@ def ProblemaI(self, DotA, DotB, letter, side, Invert = False):
     self.play(FadeOut(CircleBC_1), FadeOut(CircleBC_2))
     return DotC, LabelC, LineAB, LineBC, LineCA
 
-def ProblemaII(self, DotA, DotB, DotC, LineBC, letters=['D', 'E', 'F', 'G', 'L'], position=[RIGHT, LEFT, LEFT, UP, DOWN], Invert = False):
+def ProblemaII(self, DotA, DotB, DotC, LineBC, letters=['D', 'E', 'F', 'G', 'L'], position=[RIGHT, LEFT, LEFT, UP, DOWN], Invert=False):
     Ax, Ay, _ = DotA.get_center()
     Bx, By, _ = DotB.get_center()
     Cx, Cy, _ = DotC.get_center()
@@ -489,3 +540,41 @@ def ProblemaII(self, DotA, DotB, DotC, LineBC, letters=['D', 'E', 'F', 'G', 'L']
         FadeOut(LineFG)
     )
     return DotL, LabelL, LineAL
+
+def ProblemaIX(self, DotA, DotB, DotC, LineAB, LineCA, letters=['D', 'E', 'F'], position=[LEFT, RIGHT, DOWN], t=0.75, Invert=False):
+    AngleBAC = CreateAngle(self, DotA, LineAB, LineCA, True, RED, 0.4)
+
+    X = (1-t) * DotA.get_center()[0] + t * DotB.get_center()[0]
+    Y = (1-t) * DotA.get_center()[1] + t * DotB.get_center()[1]
+
+    DotD, LabelD = CreateDot(self, X, Y, letters[0], position[0])
+    
+    LineAD = CreateLine(self, DotA, DotD, False)
+    LineAC = CreateLine(self, DotA, DotC, False)
+
+    CircleADH = CreateCircleFromLine(self, DotA, DotD, LineAD, True)
+
+    CenterE1, CenterE2 = Intersection((DotA.get_center()[0], DotA.get_center()[1]), LineAD.get_length(), (LineAC.get_start()[0], LineAC.get_start()[1]), (LineAC.get_end()[0], LineAC.get_end()[1]))
+
+    if Invert:
+        CenterE1=CenterE2
+
+    DotE, LabelE = CreateDot(self, CenterE1[0], CenterE1[1], letters[1], position[1])
+
+    self.play(FadeOut(CircleADH))
+
+    DotF, LabelF, LineDE, LineEF, LineFD = ProblemaI(self, DotD, DotE, letters[2], position[2], True)
+
+    LineFA = CreateLine(self, DotF, DotA)
+    self.play(FadeOut(DotD, DotE, LabelD, LabelE, LineDE, LineEF, LineFD, LineAD, LineAC))
+
+    return AngleBAC, DotF, LabelF, LineFA
+
+def ProblemaX(self, DotA, DotB, letters, position, ratio, Invert):
+    DotC, LabelC, LineAB, LineBC, LineCA = ProblemaI(self, DotA, DotB, letters[0], position[0])
+    AngleBAC, DotF, LabelF, LineFA = ProblemaIX(self, DotC, DotA, DotB, LineCA, LineBC, [letters[1], letters[2], letters[3]], [position[1], position[2], position[3]], ratio, Invert)
+
+    DotD, LabelD = CreateDot(self, 0, 0, letters[4], position[4])
+
+    self.play(FadeOut(AngleBAC, DotC, DotF, LabelC, LabelF, LineAB, LineBC, LineCA, LineFA))
+    return DotD, LabelD
