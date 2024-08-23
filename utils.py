@@ -22,9 +22,9 @@ DOWN_RIGHT = (DOWN + RIGHT) / 2
 def SetOpacity(obj, opacity):
     if isinstance(obj, VGroup):
         for subobj in obj.submobjects:
-            SetOpacity(subobj, opacity)  # Recursive call for each subobject
+            SetOpacity(subobj, opacity)
     else:
-        if isinstance(obj, Polygon):  # Additional check for Polygon types
+        if isinstance(obj, Polygon):
             obj.set_stroke(opacity=opacity)
             obj.set_fill(opacity=0)
         elif isinstance(obj, Dot):
@@ -49,7 +49,6 @@ def GetPhase(DotA, DotB):
 def Introduction(self, subtitle_text, description_text, Condition, Success):
     self.wait(1)
     
-    # Title texts
     title_greek = Text(GREEK_TEXT, font_size=40, color=WHITE)
     title_greek.to_edge(UP, buff=1)
 
@@ -59,7 +58,6 @@ def Introduction(self, subtitle_text, description_text, Condition, Success):
     subtitle = Text(subtitle_text, font_size=30, color=WHITE)
     subtitle.next_to(title_portuguese, DOWN, buff=0.5)
 
-    # Break the description text into lines and center each line
     description_lines = description_text.split('\n')
     description_vgroup = VGroup(*[
         Text(line.strip(), font_size=24, color=WHITE) for line in description_lines if line.strip()
@@ -67,7 +65,6 @@ def Introduction(self, subtitle_text, description_text, Condition, Success):
     description_vgroup.arrange(DOWN, center=True, buff=0)
     description_vgroup.next_to(subtitle, DOWN, buff=0.5)
 
-    # Animations
     self.play(Write(title_greek))
     self.wait(2)
     self.play(ReplacementTransform(title_greek, title_portuguese))
@@ -158,13 +155,15 @@ def CreateDot(self, x, y, letter, side=DOWN, animate=True):
 
         self.play(FadeIn(label), run_time=0.5)
     else:
+        dot.set_fill(opacity=1)
+
         label.next_to(dot, side, buff=0.1)
         label.set_opacity(1)
-    
+        self.add(dot, label)
+
     return dot, label
 
 def CreateLine(self, DotA, DotB, animate=True):
-    # Create a line between two dots
     line = Line(DotA.get_center(), DotB.get_center(), color=COLOR, stroke_width=LINE_STROKE)
     line.z_index = 1
     if animate:
@@ -174,25 +173,24 @@ def CreateLine(self, DotA, DotB, animate=True):
     return line
 
 def MoveLine(self, group, dotC, dotD):
-    # Calculate the shift vectors for each dot
     shiftA = dotC.get_center() - group[0].get_center()
     shiftB = dotD.get_center() - group[1].get_center()
     
-    # Find the average shift to move the entire group
     average_shift = (shiftA + shiftB) / 2
     
-    # Animate moving the group to the new position
     self.play(group.animate.shift(average_shift))
 
+def MoveLineToDot(self, group, dotA, dotB):
+    shift_vector = dotB.get_center() - dotA.get_center()
+    
+    self.play(group.animate.shift(shift_vector))
+
 def RotateLine(self, line_to_rotate, reference_line, Dot, Label):
-    # Calculate the angles of the lines relative to the horizontal
     angle_to_rotate = line_to_rotate.get_angle()
     reference_angle = reference_line.get_angle()
     
-    # Calculate the angle difference
     angle_difference = reference_angle - angle_to_rotate
     
-    # Rotate the line_to_rotate by the angle difference
     self.play(Rotate(line_to_rotate, angle_difference, about_point=line_to_rotate.get_start()),
               Rotate(Dot, angle_difference, about_point=line_to_rotate.get_start()),
               Label.animate.next_to(Dot, RIGHT, buff=0.1)
@@ -246,14 +244,11 @@ def CreateCircleFromLine(self, Dot, DotB, Line, animate=True):
     return circle
 
 def AddLabelToLine(self, line, label_text, position_factor=0.5, buff=0.1, font_style=None):
-    # Get the point at the desired position along the line
     point_on_line = line.point_from_proportion(position_factor)
     
-    # Create the text label
     label = Text(label_text, font_style=font_style)
     label.next_to(point_on_line, UP, buff=buff)
 
-    # Add the label to the scene
     self.play(Create(label))
     return label
 
@@ -267,10 +262,8 @@ def AssembleTriangle(self, LineA, LineB, LineC):
     return Triangle
 
 def MoveTriangle(self, triangle, dotD, dotE, dotF):
-    # Create the target triangle from dotD, dotE, and dotF
     target_triangle = Polygon(dotD.get_center(), dotE.get_center(), dotF.get_center(), color=triangle.get_color())
     
-    # Animate moving the triangle to the new position
     self.play(Transform(triangle, target_triangle))
 
 def AddTicksToTriangle(self, triangle, animate=True, tick_length=0.1, num_ticks=1):
@@ -324,7 +317,7 @@ def CreateAngle(self, DotA, LineA, LineB, animate=True, color=WHITE, size=0.3, I
 def CreateTick(self, mark_line, length=0.1, num_ticks=1, position_factor=0.5):
     ticks = VGroup()
     line_direction = mark_line.get_unit_vector()
-    perpendicular_direction = np.cross(line_direction, [0, 0, 1])  # Use Z-axis for 3D cross product
+    perpendicular_direction = np.cross(line_direction, [0, 0, 1])
     for i in range(num_ticks):
         offset = (i - (num_ticks - 1) / 2.0) * length * 2
         tick = Line(
@@ -339,7 +332,7 @@ def CreateTick(self, mark_line, length=0.1, num_ticks=1, position_factor=0.5):
 def CreateLineTick(self, mark_line, num_ticks=1, animate=True, length=0.15, position_factor=0.5):
     ticks = VGroup()
     line_direction = mark_line.get_unit_vector()
-    perpendicular_direction = np.cross(line_direction, [0, 0, 1])  # Use Z-axis for 3D cross product
+    perpendicular_direction = np.cross(line_direction, [0, 0, 1])
     for i in range(num_ticks):
         offset = (i - (num_ticks - 1) / 2.0) * length * 0.5
         tick = Line(
@@ -361,7 +354,7 @@ def LineGetLength(Ax, Ay, Bx, By):
 def Normalize(dx, dy):
     length = math.sqrt(dx**2 + dy**2)
     if length == 0:
-        return 0, 0  # Evita divisão por zero
+        return 0, 0
     return dx / length, dy / length
 
 def Equilaterar(Ax, Ay, Bx, By):
@@ -384,13 +377,10 @@ def Equilaterar(Ax, Ay, Bx, By):
     return C1x, C1y, C2x, C2y
 
 def MoveToOrigin(self, group):
-    # Calculate the centroid of the group
     centroid = sum([mobj.get_center() for mobj in group]) / len(group)
     
-    # Calculate the shift vector to move the centroid to the origin
     shift_vector = ORIGIN - centroid + DOWN * 0.5
     
-    # Animate moving the group to the origin
     self.play(group.animate.shift(shift_vector))
 
 def ReduceArcSize(self, arc, reduced_radius):
@@ -398,7 +388,6 @@ def ReduceArcSize(self, arc, reduced_radius):
     original_color = arc.get_color()
     original_start_angle = arc.start_angle
 
-    # Create a smaller arc with the same angle and color
     reduced_arc = Arc(
         radius=reduced_radius, 
         start_angle=original_start_angle, 
@@ -408,7 +397,6 @@ def ReduceArcSize(self, arc, reduced_radius):
         arc_center=arc.arc_center
     )
 
-    # Animate the transformation to the reduced arc
     self.play(Transform(arc, reduced_arc))
     self.wait(1)
 
